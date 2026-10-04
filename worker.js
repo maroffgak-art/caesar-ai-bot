@@ -3,7 +3,7 @@
 const BAD_WORDS = ["سخافه", "سخافة", "معفن", "معفّن", "غبي", "انقلع", "تافه"];
 const LINK_RE = /(https?:\/\/|www\.|t\.me\/|telegram\.me\/|discord\.gg\/|bit\.ly\/)/i;
 const GEMINI_MODEL = "gemini-2.5-flash";
-
+  
 export default {
   // أضفنا ctx هنا لاستخدام waitUntil
   async fetch(request, env, ctx) {
