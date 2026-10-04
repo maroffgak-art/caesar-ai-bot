@@ -7,19 +7,7 @@ const GEMINI_MODEL = "gemini-2.5-flash";
 
 export default {
   async fetch(request, env) {
-    if (request.method === "GET") {
-  if (new URL(request.url).pathname === "/setup") {
-    const result = await tg("setWebhook", {
-      url: "https://caesar-ai-bot.maroffgak.workers.dev"
-    }, env);
-    return new Response(JSON.stringify(result), {
-      headers: { "content-type": "application/json" }
-    });
-  }
-
-  return new Response("Caesar AI is running");
-}
-
+    if (request.method === "GET") return new Response("Caesar AI is running");
     if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
     try {
       const update = await request.json();
@@ -110,6 +98,4 @@ async function handleUpdate(update, env) {
     const data = { chat_id: chatId, user_id: target.id, permissions };
     if (cmd === "/mute") data.until_date = Math.floor(Date.now() / 1000) + mins * 60;
     await tg("restrictChatMember", data, env);
-    return say(chatId, cmd === "/mute" ? `تم كتم ${target.first_name} لمدة ${mins} دقيقة.` : `تم إلغاء كتم ${target.first_name}.`, env);
-  }
-}
+    return say(chatId, cmd === "/mute" ? `تم كتم ${target.first_name} لمدة ${mins} دقيقة.` : `تم إلغاء كتم $
