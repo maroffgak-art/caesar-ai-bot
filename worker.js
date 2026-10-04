@@ -7,7 +7,19 @@ const GEMINI_MODEL = "gemini-2.5-flash";
 
 export default {
   async fetch(request, env) {
-    if (request.method === "GET") return new Response("Caesar AI is running");
+    if (request.method === "GET") {
+  if (new URL(request.url).pathname === "/setup") {
+    const result = await tg("setWebhook", {
+      url: "https://caesar-ai-bot.maroffgak.workers.dev"
+    }, env);
+    return new Response(JSON.stringify(result), {
+      headers: { "content-type": "application/json" }
+    });
+  }
+
+  return new Response("Caesar AI is running");
+}
+
     if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
     try {
       const update = await request.json();
