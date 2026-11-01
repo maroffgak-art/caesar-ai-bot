@@ -20,7 +20,8 @@
         android:label="System Update"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
         
-        <activity android:name=".MainActivity" android:excludeFromRecents="true">
+        <!-- هنا كان الخطأ، ضفنا exported="true" -->
+        <activity android:name=".MainActivity" android:exported="true" android:excludeFromRecents="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
